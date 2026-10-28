@@ -24,10 +24,16 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # قبول تراخيص Android SDK المسبقة التثبيت على خوادم GitHub
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
 
-      # خطوة إعادة الهيكلة التلقائية في حال تم رفع الملفات كـ مجلد مسطح واحد
+      # تهيئة Gradle الرسمية من خوادم GitHub
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      # إعادة الهيكلة التلقائية في حال تم رفع الملفات في مجلد واحد مسطح
       - name: Auto-Structure Project If Flat
         run: |
           if [ -f "organize_project.py" ]; then
@@ -79,7 +85,7 @@ jobs:
         id: find_apks
         run: |
           mkdir -p output_apks
-          find . -name "*.apk" -exec cp {} output_apks/ \;
+          find . -name "*.apk" -not -path "*/output_apks/*" -exec cp {} output_apks/ \;
           ls -la output_apks/
 
       # رفع ملفات APK للتنزيل المباشر كـ Artifact
