@@ -1,4 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">دار الإحسان – فضاء الأولياء</string>
-    <string name="title_activity_main">فضاء الأولياء</string>
+    <string name="channel_name">إشعارات فضاء الأولياء</string>
+    <string name="channel_desc">إشعارات عامة من إدارة دار الإحسان (رسائل، ملفات، إعلانات).</string>
+    <string name="offline_title">تعذّر الاتصال بفضاء الأولياء</string>
+    <string name="offline_body">تحقّق من اتصال الإنترنت ثم أعد المحاولة.</string>
+    <string name="retry">إعادة المحاولة</string>
 </resources>
