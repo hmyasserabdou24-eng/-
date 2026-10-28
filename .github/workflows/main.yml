@@ -1,0 +1,108 @@
+name: Build Dar El Ihsan Parents APK
+
+on:
+  push:
+    branches: [ "**" ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Package Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # خطوة إعادة الهيكلة التلقائية في حال تم رفع الملفات كـ مجلد مسطح واحد
+      - name: Auto-Structure Project If Flat
+        run: |
+          if [ -f "organize_project.py" ]; then
+            python3 organize_project.py
+          fi
+
+      # قراءة إعدادات Firebase من GitHub Secrets أو استخدام القالب
+      - name: Setup Firebase google-services.json (if provided as Secret)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+            echo "google-services.json configured from GitHub Secrets."
+          elif [ -f "app/google-services.json.template" ]; then
+            cp app/google-services.json.template app/google-services.json
+            echo "Used template google-services.json for build."
+          fi
+
+      # منح صلاحية التنفيذ وتجميع التطبيق عبر Gradle
+      - name: Grant Execute Permission to Gradlew
+        run: |
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug --stacktrace
+          else
+            gradle assembleDebug --stacktrace
+          fi
+
+      # إعداد توقيع النسخة النهائية Release إن تم تزويد المفاتيح في Secrets
+      - name: Sign Release APK (if keystore secret exists)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > app/release.keystore
+            ./gradlew assembleRelease \
+              -PRELEASE_STORE_FILE=release.keystore \
+              -PRELEASE_STORE_PASSWORD="$KEYSTORE_PASSWORD" \
+              -PRELEASE_KEY_ALIAS="$KEY_ALIAS" \
+              -PRELEASE_KEY_PASSWORD="$KEY_PASSWORD" || true
+          fi
+
+      # تجميع كافة ملفات الـ APK المولدة في مجلد مخصص
+      - name: Locate Generated APKs
+        id: find_apks
+        run: |
+          mkdir -p output_apks
+          find . -name "*.apk" -exec cp {} output_apks/ \;
+          ls -la output_apks/
+
+      # رفع ملفات APK للتنزيل المباشر كـ Artifact
+      - name: Upload APKs as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarElIhsan-Parents-APK
+          path: output_apks/*.apk
+          retention-days: 30
+
+      # إنشاء Release رسمي على GitHub عند إرسال Tag جديد (مثال: v1.0.0)
+      - name: Create GitHub Release (On tag push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: output_apks/*.apk
+          draft: false
+          prerelease: false
+          name: Release ${{ github.ref_name }}
+          body: |
+            تحديث تطبيق فضاء أولياء دار الإحسان (Android APK)
+            - عزل فضاء الأولياء تماماً ومنع الوصول للموقع العام أو الإدارة.
+            - تسجيل دخول دائم وحفظ آمن للجلسة عبر EncryptedSharedPreferences.
+            - إشعارات Firebase Cloud Messaging (FCM) في الخلفية والواجهة.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
