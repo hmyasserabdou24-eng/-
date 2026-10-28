@@ -1,0 +1,79 @@
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services' apply false
+}
+
+// تطبيق إضافة google-services تلقائياً عند توفر ملف google-services.json
+if (file("google-services.json").exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}
+
+android {
+    namespace 'org.darelihsan.parents'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "org.darelihsan.parents"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        aaptOptions {
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+
+    signingConfigs {
+        release {
+            // يتم ضبط هذه المتغيرات تلقائياً عبر GitHub Actions أو ملف keystore محلي
+            if (project.hasProperty('RELEASE_STORE_FILE')) {
+                storeFile file(RELEASE_STORE_FILE)
+                storePassword RELEASE_STORE_PASSWORD
+                keyAlias RELEASE_KEY_ALIAS
+                keyPassword RELEASE_KEY_PASSWORD
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (project.hasProperty('RELEASE_STORE_FILE')) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.activity:activity:1.8.2'
+    implementation 'androidx.core:core:1.12.0'
+    implementation 'androidx.webkit:webkit:1.10.0'
+    
+    // التخزين الآمن المشفر AES-256 GCM لجلسة الولي
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    
+    // إشعارات Firebase Cloud Messaging (FCM)
+    implementation platform('com.google.firebase:firebase-bom:32.7.4')
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.android.gms:play-services-base:18.3.0'
+
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
